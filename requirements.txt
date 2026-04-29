@@ -1,0 +1,6 @@
+ydata_profiling
+seaborn
+pandas
+numpy
+matplotlib
+ydata_profiling
