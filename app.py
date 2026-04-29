@@ -37,19 +37,32 @@ def summarize_data(df):
 
 def handle_missing(df, num_strategy, cat_strategy):
     for col in df.columns:
+        # Convert possible numeric strings to numbers
+        df[col] = pd.to_numeric(df[col], errors='ignore')
+
         if df[col].isnull().sum() > 0:
-            if df[col].dtype == 'object':
-                if cat_strategy == "Mode":
-                    df[col].fillna(df[col].mode()[0], inplace=True)
-                elif cat_strategy == "Drop":
-                    df.dropna(subset=[col], inplace=True)
-            else:
+
+            # Numeric columns
+            if pd.api.types.is_numeric_dtype(df[col]):
+
                 if num_strategy == "Mean":
-                    df[col].fillna(df[col].mean(), inplace=True)
+                    df[col] = df[col].fillna(df[col].mean())
+
                 elif num_strategy == "Median":
-                    df[col].fillna(df[col].median(), inplace=True)
+                    df[col] = df[col].fillna(df[col].median())
+
                 elif num_strategy == "Drop":
-                    df.dropna(subset=[col], inplace=True)
+                    df = df.dropna(subset=[col])
+
+            # Categorical columns
+            else:
+                if cat_strategy == "Mode":
+                    if not df[col].mode().empty:
+                        df[col] = df[col].fillna(df[col].mode()[0])
+
+                elif cat_strategy == "Drop":
+                    df = df.dropna(subset=[col])
+
     return df
 
 def remove_outliers(df):
@@ -69,7 +82,7 @@ def plot_count(df, col):
 
 def plot_heatmap(df):
     fig, ax = plt.subplots(figsize=(8, 5))
-    sns.heatmap(df.corr(), annot=True, cmap="coolwarm", ax=ax)
+    sns.heatmap(df.select_dtypes(include=np.number).corr(), annot=True, cmap="coolwarm", ax=ax)
     return fig
 
 # ------------------ FILE UPLOAD ------------------
@@ -122,23 +135,23 @@ if file:
                     cleaned_df = remove_outliers(cleaned_df)
 
                 st.session_state.cleaned_df = cleaned_df
-                st.success("Data cleaned!")
+                st.success("Data cleaned successfully!")
 
             if st.session_state.cleaned_df is not None:
                 st.dataframe(st.session_state.cleaned_df.head())
 
                 csv = st.session_state.cleaned_df.to_csv(index=False).encode('utf-8')
-                st.download_button("Download Clean Data", csv, "cleaned.csv")
+                st.download_button("📥 Download Clean Data", csv, "cleaned.csv")
 
         # -------- VISUALIZATION --------
         with tab3:
             plot_df = st.session_state.cleaned_df if st.session_state.cleaned_df is not None else df
 
             st.subheader("Categorical Analysis")
-            cat_col = st.selectbox("Select column", cat_cols)
-
-            if cat_col:
-                st.pyplot(plot_count(plot_df, cat_col))
+            if cat_cols:
+                cat_col = st.selectbox("Select column", cat_cols)
+                if cat_col:
+                    st.pyplot(plot_count(plot_df, cat_col))
 
             st.subheader("Correlation Heatmap")
             if st.button("Show Heatmap"):
