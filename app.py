@@ -37,8 +37,12 @@ def summarize_data(df):
 
 def handle_missing(df, num_strategy, cat_strategy):
     for col in df.columns:
-        # Convert possible numeric strings to numbers
-        df[col] = pd.to_numeric(df[col], errors='ignore')
+
+        # Safe conversion (no crash)
+        try:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+        except:
+            pass
 
         if df[col].isnull().sum() > 0:
 
@@ -82,7 +86,11 @@ def plot_count(df, col):
 
 def plot_heatmap(df):
     fig, ax = plt.subplots(figsize=(8, 5))
-    sns.heatmap(df.select_dtypes(include=np.number).corr(), annot=True, cmap="coolwarm", ax=ax)
+    num_df = df.select_dtypes(include=np.number)
+    if num_df.shape[1] < 2:
+        ax.text(0.5, 0.5, "Not enough numeric columns", ha='center', va='center')
+        return fig
+    sns.heatmap(num_df.corr(), annot=True, cmap="coolwarm", ax=ax)
     return fig
 
 # ------------------ FILE UPLOAD ------------------
